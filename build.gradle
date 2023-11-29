@@ -1,0 +1,157 @@
+plugins {
+    // https://docs.gradle.org/current/userguide/idea_plugin.html
+    id 'idea'
+
+    // https://docs.gradle.org/current/userguide/application_plugin.html
+    id 'application'
+
+    // https://plugins.gradle.org/plugin/com.adarshr.test-logger
+    id 'com.adarshr.test-logger' version '3.0.0'
+
+    // https://imperceptiblethoughts.com/shadow/introduction/
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+
+    // http://xvik.github.io/gradle-quality-plugin/4.3.0/getting-started/
+    id 'ru.vyarus.quality' version '4.7.0' // no config out of the box
+}
+
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of('17')
+    }
+}
+
+// artifact properties
+group = 'org.myorg.quickstart'
+version = '1.0'
+mainClassName = 'org.myorg.quickstart.StreamingJob'
+description = """Flink Quickstart Job"""
+
+application {
+  applicationDefaultJvmArgs = ["-Dlog4j.configurationFile=conf/flink/log4j-local.properties"]
+}
+
+run {
+    environment "FLINK_ENV", "local"
+}
+
+ext {
+    javaVersion = '17'
+    junitVersion = '5.8.2'
+    assertjVersion = '3.20.2'
+    flinkVersion = '1.18.0'
+    slf4jVersion = '1.7.32'
+    log4jVersion = '2.17.0'
+    kafkaConnectorVersion = '3.0.1-1.18'
+}
+
+// declare where to find the dependencies of your project
+repositories {
+    mavenCentral()
+    gradlePluginPortal()
+}
+
+// NOTE: We cannot use "compileOnly" or "shadow" configurations since then we could not run code
+// in the IDE or with "gradle run". We also cannot exclude transitive dependencies from the
+// shadowJar yet (see https://github.com/johnrengelman/shadow/issues/159).
+// -> Explicitly define the // libraries we want to be included in the "flinkShadowJar" configuration!
+configurations {
+    flinkShadowJar // dependencies which go into the shadowJar
+
+    // always exclude these (also from transitive dependencies) since they are provided by Flink
+    flinkShadowJar.exclude group: 'org.apache.flink', module: 'force-shading'
+    flinkShadowJar.exclude group: 'com.google.code.findbugs', module: 'jsr305'
+    flinkShadowJar.exclude group: 'org.slf4j'
+    flinkShadowJar.exclude group: 'org.apache.logging.log4j'
+
+    // https://logging.apache.org/log4j/2.x/faq.html#exclusions
+    // Good Explanation: https://stackoverflow.com/questions/42348755/class-path-contains-multiple-slf4j-bindings-error
+    all*.exclude group: 'log4j', module: 'log4j'
+    all*.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// For details see https://github.com/radarsh/gradle-test-logger-plugin
+testlogger {
+    theme 'mocha'
+    slowThreshold 5000
+    showStandardStreams true
+    showFullStackTraces false
+    logLevel 'QUIET'
+}
+
+
+// declare the dependencies for your production and test code
+dependencies {
+    // --------------------------------------------------------------
+    // Dependencies that should be part of the shadow jar, e.g.
+    // connectors. These must be in the flinkShadowJar configuration!
+    // --------------------------------------------------------------
+    // Core
+    implementation "org.apache.flink:flink-streaming-java:${flinkVersion}"
+    implementation "org.apache.flink:flink-runtime-web:${flinkVersion}"
+
+    // Connectors & Formats
+
+    // Logging
+    implementation "org.apache.logging.log4j:log4j-api:${log4jVersion}"
+    implementation "org.apache.logging.log4j:log4j-core:${log4jVersion}"
+    implementation "org.apache.logging.log4j:log4j-slf4j-impl:${log4jVersion}"
+    implementation "org.slf4j:slf4j-log4j12:${slf4jVersion}"
+
+    // Supplementary Libraries
+    implementation group: 'com.typesafe', name: 'config', version: '1.4.0'
+
+    // https://mvnrepository.com/artifact/org.apache.flink/flink-connector-kafka
+    flinkShadowJar "org.apache.flink:flink-connector-kafka:${kafkaConnectorVersion}"
+    implementation "org.apache.flink:flink-connector-kafka:${kafkaConnectorVersion}"
+
+
+    // Supplementary Libraries
+    flinkShadowJar group: 'com.typesafe', name: 'config', version: '1.4.0'
+
+    // -----------------------------------------------------------------
+    // Add test dependencies here.
+    // -----------------------------------------------------------------
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
+    testImplementation group: 'org.assertj', name:'assertj-core', version: "${assertjVersion}"
+
+    testImplementation "org.apache.flink:flink-test-utils:${flinkVersion}"
+    testImplementation "org.apache.flink:flink-runtime:${flinkVersion}:tests"
+    testImplementation "org.apache.flink:flink-streaming-java:${flinkVersion}:tests"
+}
+
+// make compileOnly dependencies available for tests:
+sourceSets {
+    main.compileClasspath += configurations.flinkShadowJar
+    main.runtimeClasspath += configurations.flinkShadowJar
+    test.compileClasspath += configurations.flinkShadowJar
+    test.runtimeClasspath += configurations.flinkShadowJar
+    javadoc.classpath += configurations.flinkShadowJar
+}
+
+run.classpath = sourceSets.main.runtimeClasspath
+
+jar {
+    manifest {
+        attributes 'Built-By': System.getProperty('user.name'),
+                'Build-Jdk': System.getProperty('java.version')
+    }
+}
+
+wrapper {
+    gradleVersion = '7.3.3'
+}
+
+tasks.withType(Pmd) {
+    enabled = false
+}
+
+tasks.withType(Checkstyle) {
+    enabled = false
+}

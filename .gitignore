@@ -1,0 +1,47 @@
+# Java
+target/
+.mtj.tmp/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+.classpath
+.settings/
+.project
+.gitattributes
+
+# Project Specific
+# NOTE: Except the flink-connector-kinesis_2.11-1.8.2, exclude all the other .jar
+!flink-connector-kinesis_2.11-1.8.2.jar
+
+
+# Gradle
+bin/
+build/
+.gradle/
+.gradletasknamecache
+gradle-app.setting
+!gradle-wrapper.jar
+gradle-cache/
+
+# IntelliJ
+out/
+.idea/
+.idea_modules/
+*.iml
+*.ipr
+*.iws
+
+# OS X
+.DS_Store
+
+# vim
+*.swp
+
+# Ignore Gradle build output directory
+build
+
+# temp container related data
+data/

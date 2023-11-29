@@ -1,0 +1,83 @@
+version: '3.8'
+
+networks:
+  kafka-net:
+    external: true
+
+services:
+  grafana:
+    image: grafana/grafana
+    hostname: grafana
+    environment:
+      GF_SERVER_HTTP_PORT: 9003
+    ports:
+      - 9003:9003
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ../conf/grafana/provisioning/:/etc/grafana/provisioning/
+      - ../data/grafana:/var/lib/grafana
+    networks:
+      - kafka-net
+
+
+  logstash:
+    image: logstash:7.12.0
+    volumes:
+      - ../conf/logstash/logstash.conf:/config-dir/logstash.conf
+    restart: always
+    command: logstash -f /config-dir/logstash.conf
+    ports:
+      - "9600:9600"
+      - "7777:7777"
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    networks:
+      - kafka-net
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.9.2
+    hostname: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - http.port=9200
+      - http.cors.enabled=true
+      - http.cors.allow-origin=http://localhost:1358,http://127.0.0.1:1358
+      - http.cors.allow-headers=X-Requested-With,X-Auth-Token,Content-Type,Content-Length,Authorization
+      - http.cors.allow-credentials=true
+      - bootstrap.memory_lock=true
+      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
+    volumes:
+      - ../data/elasticsearch:/usr/share/elasticsearch/data
+    ports:
+      - '9200:9200'
+      - '9300:9300'
+    networks:
+      - kafka-net
+
+  cerebro:
+    image: lmenezes/cerebro:latest
+    hostname: cerebro
+    environment:
+      CEREBRO_PORT: 9004
+    ports:
+      - "9004:9004"
+    command:
+      - -Dhosts.0.host=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - kafka-net
+
+
+  dejavu:
+    image: appbaseio/dejavu:3.4.7
+    hostname: dejavu
+    ports:
+      - '1358:1358'
+    depends_on:
+      - elasticsearch
+    networks:
+      - kafka-net
