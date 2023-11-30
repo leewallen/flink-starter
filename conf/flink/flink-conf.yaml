@@ -1,14 +1,32 @@
-jobmanager.memory.process.size: 1600Mb
-jobmanager.rpc.address: jobmanager
+pipeline.time-characteristic: EventTime
+
 blob.server.port: 6124
 query.server.port: 6125
 
+jobmanager.memory.process.size: 1600Mb
+jobmanager.rpc.address: jobmanager
+
 taskmanager.memory.process.size: 1728Mb
 taskmanager.numberOfTaskSlots: 2
+taskmanager.network.memory.buffer-debloat.enabled: true
 
 state.backend: filesystem
+state.backend.type: rocksdb
 state.checkpoints.dir: file:///tmp/flink-checkpoints-directory
 state.savepoints.dir: file:///tmp/flink-savepoints-directory
+state.backend.incremental: true
+state.backend.rocksdb.memory.managed: true
+state.backend.rocksdb.timer-service.factory: rocksdb
+state.backend.rocksdb.metrics.block-cache-hit: true
+state.backend.rocksdb.metrics.block-cache-miss: true
+state.backend.rocksdb.metrics.estimate-num-keys: true
+
+kubernetes.cluster-id: job-cluster
+
+execution.checkpointing.mode: EXACTLY_ONCE
+execution.checkpointing.interval: 10000 ms
+
+rest.flamegraph.enabled: true
 
 heartbeat.interval: 1000
 heartbeat.timeout: 5000
